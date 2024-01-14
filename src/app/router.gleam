@@ -20,7 +20,7 @@ fn show_list(req: Request, user: String, list: String) -> Response {
     |> string.append(list)
     |> string.append("</b> of user <b>")
     |> string.append(user)
-    |> string.append("</body>")
+    |> string.append("</b></body>")
     |> string.append("</html>")
 
   use _req <- web.middleware(req)
