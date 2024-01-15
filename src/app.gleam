@@ -1,8 +1,10 @@
 import gleam/erlang/process
 import gleam/dict
+import gleam/list
 import mist
 import wisp
 import app/router
+import app/domain
 
 pub fn main() {
   wisp.configure_logger()
@@ -21,9 +23,6 @@ pub fn main() {
 
   process.sleep_forever()
 }
-
-import gleam/list
-import domain
 
 fn build_store() {
   let todo_items =

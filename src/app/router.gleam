@@ -1,18 +1,15 @@
 import wisp.{type Request, type Response}
 import gleam/string
-import gleam/dict.{type Dict}
 import gleam/list
-import gleam/result
 import gleam/string_builder
 import app/web
-import domain.{type ListName, type TodoItem, type TodoList, type User}
+import app/domain.{type ListName, type TodoItem, type TodoList, type User}
+import app/persistence.{type Store}
+import app/hub
 
 type HtmlPage {
   HtmlPage(raw: String)
 }
-
-type Store =
-  Dict(User, List(TodoList))
 
 pub fn handle_request(req: Request, store: Store) -> Response {
   case wisp.path_segments(req) {
@@ -27,33 +24,16 @@ pub fn handle_request(req: Request, store: Store) -> Response {
 }
 
 fn show_list(store: Store, req: Request, list_id: #(User, ListName)) -> Response {
-  let #(user, _list_name) = list_id
-
-  let response =
-    store
-    |> fetch_list_content(list_id)
-    |> render_html
-    |> create_response
+  let response = case hub.fetch_list_content(store, list_id) {
+    Ok(todo_list) ->
+      todo_list
+      |> render_html
+      |> create_success_response
+    Error(message) -> create_error_response(message)
+  }
 
   use _req <- web.middleware(req)
   response
-}
-
-fn fetch_list_content(store: Store, list_id: #(User, ListName)) -> TodoList {
-  let #(user, list_name) = list_id
-
-  let lists_result = dict.get(store, user)
-
-  let user_list_result =
-    result.map(lists_result, fn(lists) {
-      list.filter(lists, fn(list) { list.name == list_name })
-    })
-
-  case user_list_result {
-    Ok([user_list]) -> user_list
-    Ok(_) -> panic as "list unknown"
-    Error(Nil) -> panic as "list unknown"
-  }
 }
 
 fn render_html(list: TodoList) -> HtmlPage {
@@ -91,8 +71,14 @@ fn render_items(items: List(TodoItem)) {
   |> list.reduce(fn(html, snippet) { string.append(html, snippet) })
 }
 
-fn create_response(html: HtmlPage) -> Response {
+fn create_success_response(html: HtmlPage) -> Response {
   html.raw
   |> string_builder.from_string()
   |> wisp.html_response(200)
+}
+
+fn create_error_response(msg: String) -> Response {
+  msg
+  |> string_builder.from_string()
+  |> wisp.html_response(500)
 }
